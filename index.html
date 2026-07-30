@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="치킨집 사장님을 위한 무료 재고 관리 웹앱 — 입고·출고 기록, 재고 부족 알림, 유통기한 관리를 브라우저에서 바로.">
+<title>🍗 치킨집 재고 관리</title>
+<style>
+  :root {
+    --kakao: #fee500;
+    --kakao-press: #f4dc00;
+    --kakao-soft: #fff8cc;
+    --ink: #191919;
+    --brown: #3c1e1e;
+    --bg: #f5f5f5;
+    --surface: #ffffff;
+    --surface-2: #fafafa;
+    --border: #e9e9e9;
+    --text: #191919;
+    --text-sub: #8b8b8b;
+    --accent: #191919;
+    --accent-soft: #fff3b8;
+    --accent-dark: #6d5d00;
+    --green: #2f9e44;
+    --green-soft: #e6f7ea;
+    --red: #e03131;
+    --red-soft: #ffe8e8;
+    --yellow: #f08c00;
+    --yellow-soft: #fff4e0;
+    --blue: #1971c2;
+    --blue-soft: #e7f1fb;
+    --radius: 16px;
+    --shadow: 0 1px 3px rgba(25,25,25,.05), 0 4px 16px rgba(25,25,25,.04);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Pretendard", "Pretendard Variable", -apple-system, BlinkMacSystemFont, "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  button { font-family: inherit; cursor: pointer; }
+  input, select, textarea { font-family: inherit; font-size: 14px; }
+
+  /* ── Header ── */
+  header {
+    background: var(--kakao);
+    border-bottom: none;
+    position: sticky; top: 0; z-index: 50;
+  }
+  .header-inner {
+    max-width: 1100px; margin: 0 auto; padding: 14px 20px;
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  }
+  .logo { font-size: 20px; font-weight: 800; display: flex; align-items: center; gap: 8px; color: var(--ink); }
+  .logo .sub { font-size: 12px; font-weight: 600; color: rgba(25,25,25,.55); margin-top: 4px; }
+  .header-actions .btn-ghost {
+    background: rgba(255,255,255,.6); border-color: rgba(25,25,25,.12); color: var(--ink);
+  }
+  .header-actions .btn-ghost:hover { background: rgba(255,255,255,.85); filter: none; }
+  .header-actions { margin-left: auto; display: flex; gap: 8px; }
+
+  /* ── Tabs ── */
+  nav.tabs {
+    max-width: 1100px; margin: 0 auto; padding: 0 20px;
+    display: flex; gap: 4px; overflow-x: auto;
+  }
+  nav.tabs button {
+    background: none; border: none; padding: 10px 16px; font-size: 14px; font-weight: 700;
+    color: rgba(25,25,25,.5); border-bottom: 3px solid transparent; white-space: nowrap;
+  }
+  nav.tabs button.active { color: var(--ink); border-bottom-color: var(--ink); }
+  nav.tabs button:hover { color: var(--ink); }
+
+  main { max-width: 1100px; margin: 0 auto; padding: 20px; }
+
+  /* ── Cards / stats ── */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 16px 18px; box-shadow: var(--shadow); cursor: pointer; transition: transform .1s;
+  }
+  .stat-card:hover { transform: translateY(-2px); }
+  .stat-card .label { font-size: 13px; color: var(--text-sub); font-weight: 600; }
+  .stat-card .value { font-size: 26px; font-weight: 800; margin-top: 2px; }
+  .stat-card.warn .value { color: var(--red); }
+  .stat-card.expire .value { color: var(--yellow); }
+  .stat-card.ok .value { color: var(--green); }
+
+  .panel {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 18px; margin-bottom: 16px;
+  }
+  .panel h2 { font-size: 16px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+
+  /* ── Toolbar ── */
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; align-items: center; }
+  .toolbar input[type="search"] {
+    flex: 1; min-width: 180px; padding: 9px 14px; border: 1.5px solid var(--border);
+    border-radius: 10px; background: var(--surface); outline: none;
+  }
+  .toolbar input[type="search"]:focus { border-color: var(--accent); }
+  .toolbar select {
+    padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 10px;
+    background: var(--surface); outline: none; font-weight: 500;
+  }
+
+  /* ── Buttons ── */
+  .btn {
+    padding: 9px 16px; border-radius: 10px; border: none; font-size: 14px; font-weight: 600;
+    display: inline-flex; align-items: center; gap: 6px; transition: filter .1s;
+  }
+  .btn:hover { filter: brightness(.95); }
+  .btn-primary { background: var(--kakao); color: var(--ink); }
+  .btn-primary:hover { background: var(--kakao-press); filter: none; }
+  .btn-ghost { background: var(--surface); color: var(--text); border: 1.5px solid var(--border); }
+  .btn-sm { padding: 5px 10px; font-size: 12.5px; border-radius: 8px; }
+  .btn-in { background: var(--green-soft); color: var(--green); }
+  .btn-out { background: var(--blue-soft); color: var(--blue); }
+  .btn-danger-soft { background: var(--red-soft); color: var(--red); }
+
+  /* ── Table ── */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th {
+    text-align: left; padding: 10px 12px; color: var(--text-sub); font-size: 12.5px; font-weight: 700;
+    border-bottom: 2px solid var(--border); white-space: nowrap; user-select: none;
+  }
+  th.sortable { cursor: pointer; }
+  th.sortable:hover { color: var(--text); }
+  td { padding: 11px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tbody tr:hover { background: var(--surface-2); }
+  tbody tr:last-child td { border-bottom: none; }
+  .item-name { font-weight: 700; white-space: nowrap; }
+  .item-memo { font-size: 12px; color: var(--text-sub); }
+  .num { font-variant-numeric: tabular-nums; text-align: right; }
+  .qty-cell { font-weight: 700; font-size: 15px; }
+
+  /* ── Badges ── */
+  .badge {
+    display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap;
+  }
+  .badge-ok { background: var(--green-soft); color: var(--green); }
+  .badge-low { background: var(--yellow-soft); color: var(--yellow); }
+  .badge-out { background: var(--red-soft); color: var(--red); }
+  .badge-expire { background: var(--red-soft); color: var(--red); }
+  .badge-cat { background: var(--accent-soft); color: var(--accent-dark); }
+  .badge-type-in { background: var(--green-soft); color: var(--green); }
+  .badge-type-out { background: var(--blue-soft); color: var(--blue); }
+  .badge-type-adjust { background: var(--yellow-soft); color: var(--yellow); }
+
+  /* progress bar for stock level */
+  .stock-bar { width: 90px; height: 6px; border-radius: 999px; background: var(--border); margin-top: 5px; overflow: hidden; }
+  .stock-bar > div { height: 100%; border-radius: 999px; }
+
+  /* ── Modal ── */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(30,26,20,.45); z-index: 100;
+    display: flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  .modal {
+    background: var(--surface); border-radius: 18px; width: 100%; max-width: 460px;
+    max-height: 90vh; overflow-y: auto; padding: 24px; box-shadow: 0 20px 60px rgba(0,0,0,.2);
+  }
+  .modal h3 { font-size: 18px; font-weight: 800; margin-bottom: 16px; }
+  .form-group { margin-bottom: 13px; }
+  .form-group label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 5px; color: var(--text-sub); }
+  .form-group input, .form-group select, .form-group textarea {
+    width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 10px; outline: none;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--accent); }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+  .modal .item-info {
+    background: var(--surface-2); border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; font-size: 14px;
+  }
+  .quick-qty { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .quick-qty button {
+    padding: 5px 12px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--surface);
+    font-size: 13px; font-weight: 600;
+  }
+  .quick-qty button:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── Toast ── */
+  #toast-wrap { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 200; display: flex; flex-direction: column; gap: 8px; }
+  .toast {
+    background: var(--brown); color: #fff; padding: 11px 20px; border-radius: 999px; font-size: 14px; font-weight: 600;
+    box-shadow: 0 8px 24px rgba(0,0,0,.25); animation: toastIn .25s ease;
+  }
+  @keyframes toastIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+  .empty {
+    text-align: center; padding: 48px 20px; color: var(--text-sub);
+  }
+  .empty .emoji { font-size: 40px; margin-bottom: 10px; }
+
+  /* alerts on dashboard */
+  .alert-list { display: flex; flex-direction: column; gap: 8px; }
+  .alert-item {
+    display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: 10px; font-size: 14px;
+  }
+  .alert-item.low { background: var(--yellow-soft); }
+  .alert-item.out { background: var(--red-soft); }
+  .alert-item.exp { background: var(--red-soft); }
+  .alert-item .grow { flex: 1; }
+  .alert-item b { font-weight: 700; }
+
+  .history-filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+
+  @media (max-width: 640px) {
+    main { padding: 14px; }
+    .hide-mobile { display: none; }
+    .stat-card .value { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="logo">
+      <span>🍗 치킨집 재고 관리</span>
+      <span class="sub" id="today-date"></span>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-ghost btn-sm" onclick="exportData()">📤 백업</button>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('import-file').click()">📥 복원</button>
+      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
+    </div>
+  </div>
+  <nav class="tabs">
+    <button data-tab="dashboard" class="active" onclick="switchTab('dashboard')">📊 대시보드</button>
+    <button data-tab="inventory" onclick="switchTab('inventory')">📦 재고 목록</button>
+    <button data-tab="history" onclick="switchTab('history')">🧾 입출고 기록</button>
+  </nav>
+</header>
+
+<main>
+  <!-- ═══ 대시보드 ═══ -->
+  <section id="tab-dashboard">
+    <div class="stats">
+      <div class="stat-card" onclick="switchTab('inventory')">
+        <div class="label">전체 품목</div>
+        <div class="value" id="stat-total">0</div>
+      </div>
+      <div class="stat-card warn" onclick="switchTab('inventory'); setFilter('low')">
+        <div class="label">재고 부족</div>
+        <div class="value" id="stat-low">0</div>
+      </div>
+      <div class="stat-card expire" onclick="switchTab('inventory'); setFilter('expire')">
+        <div class="label">유통기한 임박</div>
+        <div class="value" id="stat-expire">0</div>
+      </div>
+      <div class="stat-card ok" onclick="switchTab('history')">
+        <div class="label">오늘 입출고</div>
+        <div class="value" id="stat-today">0</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>⚠️ 확인이 필요한 재고</h2>
+      <div class="alert-list" id="alert-list"></div>
+    </div>
+
+    <div class="panel">
+      <h2>🕐 최근 입출고</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>일시</th><th>구분</th><th>품목</th><th class="num">수량</th><th class="hide-mobile">메모</th></tr></thead>
+          <tbody id="recent-tx"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ 재고 목록 ═══ -->
+  <section id="tab-inventory" style="display:none">
+    <div class="toolbar">
+      <input type="search" id="search" placeholder="품목 검색…" oninput="renderInventory()">
+      <select id="filter-category" onchange="renderInventory()">
+        <option value="">전체 카테고리</option>
+      </select>
+      <select id="filter-status" onchange="renderInventory()">
+        <option value="">전체 상태</option>
+        <option value="ok">정상</option>
+        <option value="low">부족</option>
+        <option value="out">품절</option>
+        <option value="expire">유통기한 임박</option>
+      </select>
+      <button class="btn btn-primary" onclick="openItemModal()">＋ 품목 추가</button>
+    </div>
+
+    <div class="panel" style="padding: 6px 12px;">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="sortable" onclick="setSort('name')">품목 <span id="sort-name"></span></th>
+              <th class="hide-mobile">카테고리</th>
+              <th class="num sortable" onclick="setSort('qty')">재고 <span id="sort-qty"></span></th>
+              <th>상태</th>
+              <th class="hide-mobile sortable" onclick="setSort('expiry')">유통기한 <span id="sort-expiry"></span></th>
+              <th style="text-align:right">관리</th>
+            </tr>
+          </thead>
+          <tbody id="inventory-body"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="inventory-empty" style="display:none">
+        <div class="emoji">🐔</div>
+        <div>표시할 품목이 없습니다.<br>「＋ 품목 추가」 버튼으로 재고를 등록해 보세요.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ 입출고 기록 ═══ -->
+  <section id="tab-history" style="display:none">
+    <div class="history-filters">
+      <select id="history-type" onchange="renderHistory()">
+        <option value="">전체 구분</option>
+        <option value="in">입고</option>
+        <option value="out">출고</option>
+        <option value="adjust">조정</option>
+      </select>
+      <select id="history-range" onchange="renderHistory()">
+        <option value="7">최근 7일</option>
+        <option value="30">최근 30일</option>
+        <option value="">전체 기간</option>
+      </select>
+    </div>
+    <div class="panel" style="padding: 6px 12px;">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>일시</th><th>구분</th><th>품목</th><th class="num">수량</th><th class="num hide-mobile">변경 후 재고</th><th class="hide-mobile">메모</th></tr></thead>
+          <tbody id="history-body"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="history-empty" style="display:none">
+        <div class="emoji">🧾</div>
+        <div>입출고 기록이 없습니다.</div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="modal-root"></div>
+<div id="toast-wrap"></div>
+
+<script>
+'use strict';
+
+/* ═══════════ 데이터 ═══════════ */
+const STORE_KEY = 'chicken-inventory-v1';
+const CATEGORIES = ['닭·육류', '파우더·염지', '소스·양념', '식용유', '포장재', '음료·주류', '부재료', '기타'];
+const EXPIRE_SOON_DAYS = 7;
+
+let state = { items: [], transactions: [] };
+let sortKey = 'name', sortDir = 1;
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+function load() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) { state = JSON.parse(raw); return; }
+  } catch (e) { console.warn('저장 데이터를 불러오지 못했습니다:', e); }
+  seedSample();
+}
+
+function save() { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+
+function seedSample() {
+  const d = (offset) => { const t = new Date(); t.setDate(t.getDate() + offset); return t.toISOString().slice(0, 10); };
+  const items = [
+    ['생닭 10호',        '닭·육류',    'kg',  42,  20, d(3),  '냉장 보관, 매일 발주'],
+    ['닭다리 (북채)',    '닭·육류',    'kg',  8,   10, d(2),  '순살용'],
+    ['닭날개 (윙+봉)',   '닭·육류',    'kg',  15,  8,  d(4),  ''],
+    ['튀김 파우더',      '파우더·염지', '포',  12,  5,  d(180),'20kg 단위 발주'],
+    ['염지제',           '파우더·염지', '포',  3,   4,  d(90), ''],
+    ['양념치킨 소스',    '소스·양념',  '통',  6,   3,  d(30), '10kg 통'],
+    ['간장 소스',        '소스·양념',  '통',  2,   3,  d(45), ''],
+    ['마늘 소스',        '소스·양념',  '통',  0,   2,  null,  '품절 — 발주 필요'],
+    ['핫스파이시 소스',  '소스·양념',  '통',  4,   2,  d(5),  ''],
+    ['카놀라유 18L',     '식용유',     '통',  9,   6,  d(200),''],
+    ['치킨 박스 (대)',   '포장재',     '장',  320, 200,null,  ''],
+    ['치킨 박스 (소)',   '포장재',     '장',  150, 200,null,  '주말 전 확인'],
+    ['비닐봉투',         '포장재',     '장',  800, 300,null,  ''],
+    ['치킨무',           '부재료',     '개',  95,  50, d(6),  ''],
+    ['콜라 1.25L',       '음료·주류',  '병',  48,  24, d(120),''],
+    ['생맥주 케그',      '음료·주류',  '통',  2,   2,  d(14), ''],
+  ];
+  state.items = items.map(([name, category, unit, qty, minQty, expiry, memo]) =>
+    ({ id: uid(), name, category, unit, qty, minQty, expiry, memo }));
+
+  // 샘플 입출고 기록
+  const tx = [];
+  const now = Date.now();
+  const sample = [
+    [0.2,  'in',  '생닭 10호', 30, 42], [0.3, 'out', '생닭 10호', 25, 12],
+    [1.1,  'in',  '카놀라유 18L', 4, 9], [1.4, 'out', '치킨무', 40, 95],
+    [2.2,  'out', '치킨 박스 (대)', 80, 320], [2.5, 'in', '콜라 1.25L', 24, 48],
+    [3.1,  'out', '양념치킨 소스', 1, 6], [4.3, 'in', '튀김 파우더', 5, 12],
+  ];
+  for (const [daysAgo, type, name, qty, after] of sample) {
+    const item = state.items.find(i => i.name === name);
+    tx.push({ id: uid(), itemId: item ? item.id : null, itemName: name, type, qty,
+      qtyAfter: after, memo: '', at: new Date(now - daysAgo * 86400000).toISOString() });
+  }
+  state.transactions = tx.sort((a, b) => b.at.localeCompare(a.at));
+  save();
+}
+
+/* ═══════════ 상태 계산 ═══════════ */
+function daysUntil(dateStr) {
+  if (!dateStr) return Infinity;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  return Math.round((new Date(dateStr + 'T00:00:00') - today) / 86400000);
+}
+
+function itemStatus(item) {
+  if (item.qty <= 0) return 'out';
+  const dd = daysUntil(item.expiry);
+  if (dd < 0) return 'expired';
+  if (dd <= EXPIRE_SOON_DAYS) return 'expire';
+  if (item.qty < item.minQty) return 'low';
+  return 'ok';
+}
+
+const STATUS_LABEL = {
+  ok: ['정상', 'badge-ok'], low: ['부족', 'badge-low'],
+  out: ['품절', 'badge-out'], expire: ['기한 임박', 'badge-expire'], expired: ['기한 만료', 'badge-expire'],
+};
+
+/* ═══════════ 렌더링 ═══════════ */
+function fmtNum(n) { return Number(n).toLocaleString('ko-KR'); }
+function fmtDateTime(iso) {
+  const d = new Date(iso);
+  return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+function esc(s) { const div = document.createElement('div'); div.textContent = s ?? ''; return div.innerHTML; }
+
+function switchTab(name) {
+  document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  ['dashboard', 'inventory', 'history'].forEach(t => {
+    document.getElementById('tab-' + t).style.display = t === name ? '' : 'none';
+  });
+  renderAll();
+}
+
+function setFilter(status) {
+  document.getElementById('filter-status').value = status;
+  renderInventory();
+}
+
+function setSort(key) {
+  if (sortKey === key) sortDir *= -1; else { sortKey = key; sortDir = 1; }
+  renderInventory();
+}
+
+function renderAll() { renderDashboard(); renderInventory(); renderHistory(); }
+
+function renderDashboard() {
+  const items = state.items;
+  const low = items.filter(i => itemStatus(i) === 'low' || itemStatus(i) === 'out');
+  const expire = items.filter(i => ['expire', 'expired'].includes(itemStatus(i)));
+  const todayStr = new Date().toDateString();
+  const todayTx = state.transactions.filter(t => new Date(t.at).toDateString() === todayStr);
+
+  document.getElementById('stat-total').textContent = fmtNum(items.length);
+  document.getElementById('stat-low').textContent = fmtNum(low.length);
+  document.getElementById('stat-expire').textContent = fmtNum(expire.length);
+  document.getElementById('stat-today').textContent = fmtNum(todayTx.length);
+
+  // 알림 목록
+  const alerts = [];
+  for (const i of items) {
+    const st = itemStatus(i);
+    if (st === 'out') alerts.push({ cls: 'out', icon: '🚨', html: `<b>${esc(i.name)}</b> 품절 — 즉시 발주가 필요합니다.`, item: i });
+    else if (st === 'low') alerts.push({ cls: 'low', icon: '⚠️', html: `<b>${esc(i.name)}</b> 재고 부족 (${fmtNum(i.qty)}${esc(i.unit)} / 최소 ${fmtNum(i.minQty)}${esc(i.unit)})`, item: i });
+    else if (st === 'expired') alerts.push({ cls: 'exp', icon: '❌', html: `<b>${esc(i.name)}</b> 유통기한 만료 (${esc(i.expiry)})`, item: i });
+    else if (st === 'expire') alerts.push({ cls: 'exp', icon: '⏰', html: `<b>${esc(i.name)}</b> 유통기한 ${daysUntil(i.expiry) === 0 ? '오늘까지' : `${daysUntil(i.expiry)}일 남음`} (${esc(i.expiry)})`, item: i });
+  }
+  const order = { out: 0, exp: 1, low: 2 };
+  alerts.sort((a, b) => order[a.cls] - order[b.cls]);
+  const alertList = document.getElementById('alert-list');
+  alertList.innerHTML = alerts.length
+    ? alerts.map(a => `
+      <div class="alert-item ${a.cls}">
+        <span>${a.icon}</span>
+        <span class="grow">${a.html}</span>
+        <button class="btn btn-sm btn-in" onclick="openTxModal('${a.item.id}','in')">입고</button>
+      </div>`).join('')
+    : '<div class="empty" style="padding:24px"><div class="emoji">✅</div>모든 재고가 정상입니다!</div>';
+
+  // 최근 거래
+  const recent = state.transactions.slice(0, 8);
+  document.getElementById('recent-tx').innerHTML = recent.length
+    ? recent.map(t => txRowHtml(t)).join('')
+    : '<tr><td colspan="5" style="text-align:center;color:var(--text-sub);padding:24px">아직 기록이 없습니다.</td></tr>';
+}
+
+const TX_LABEL = { in: ['입고', 'badge-type-in'], out: ['출고', 'badge-type-out'], adjust: ['조정', 'badge-type-adjust'] };
+
+function txRowHtml(t, withAfter) {
+  const [label, cls] = TX_LABEL[t.type] || ['?', ''];
+  const sign = t.type === 'in' ? '+' : t.type === 'out' ? '−' : '';
+  return `<tr>
+    <td style="white-space:nowrap">${fmtDateTime(t.at)}</td>
+    <td><span class="badge ${cls}">${label}</span></td>
+    <td>${esc(t.itemName)}</td>
+    <td class="num" style="font-weight:700">${sign}${fmtNum(t.qty)}</td>
+    ${withAfter ? `<td class="num hide-mobile">${t.qtyAfter != null ? fmtNum(t.qtyAfter) : '-'}</td>` : ''}
+    <td class="hide-mobile item-memo">${esc(t.memo)}</td>
+  </tr>`;
+}
+
+function renderInventory() {
+  const q = document.getElementById('search').value.trim().toLowerCase();
+  const cat = document.getElementById('filter-category').value;
+  const statusF = document.getElementById('filter-status').value;
+
+  let rows = state.items.filter(i => {
+    if (q && !i.name.toLowerCase().includes(q) && !(i.memo || '').toLowerCase().includes(q)) return false;
+    if (cat && i.category !== cat) return false;
+    if (statusF) {
+      const st = itemStatus(i);
+      if (statusF === 'expire' ? !['expire', 'expired'].includes(st) : st !== statusF) return false;
+    }
+    return true;
+  });
+
+  rows.sort((a, b) => {
+    let v;
+    if (sortKey === 'qty') v = a.qty - b.qty;
+    else if (sortKey === 'expiry') v = (a.expiry || '9999').localeCompare(b.expiry || '9999');
+    else v = a.name.localeCompare(b.name, 'ko');
+    return v * sortDir;
+  });
+
+  ['name', 'qty', 'expiry'].forEach(k => {
+    document.getElementById('sort-' + k).textContent = sortKey === k ? (sortDir === 1 ? '▲' : '▼') : '';
+  });
+
+  const body = document.getElementById('inventory-body');
+  document.getElementById('inventory-empty').style.display = rows.length ? 'none' : '';
+  body.innerHTML = rows.map(i => {
+    const st = itemStatus(i);
+    const [label, cls] = STATUS_LABEL[st];
+    const pct = i.minQty > 0 ? Math.min(100, (i.qty / (i.minQty * 2)) * 100) : (i.qty > 0 ? 100 : 0);
+    const barColor = st === 'out' ? 'var(--red)' : st === 'low' ? 'var(--yellow)' : 'var(--green)';
+    const dd = daysUntil(i.expiry);
+    const expiryTxt = i.expiry
+      ? `${esc(i.expiry)}${dd !== Infinity && dd >= 0 && dd <= EXPIRE_SOON_DAYS ? ` <span style="color:var(--red);font-weight:700">(D-${dd})</span>` : dd < 0 ? ' <span style="color:var(--red);font-weight:700">(만료)</span>' : ''}`
+      : '<span style="color:var(--text-sub)">-</span>';
+    return `<tr>
+      <td>
+        <div class="item-name">${esc(i.name)}</div>
+        ${i.memo ? `<div class="item-memo">${esc(i.memo)}</div>` : ''}
+      </td>
+      <td class="hide-mobile"><span class="badge badge-cat">${esc(i.category)}</span></td>
+      <td class="num">
+        <span class="qty-cell">${fmtNum(i.qty)}</span> <span style="color:var(--text-sub);font-size:12px">${esc(i.unit)}</span>
+        <div class="stock-bar" style="margin-left:auto"><div style="width:${pct}%;background:${barColor}"></div></div>
+      </td>
+      <td><span class="badge ${cls}">${label}</span></td>
+      <td class="hide-mobile" style="white-space:nowrap;font-size:13px">${expiryTxt}</td>
+      <td style="text-align:right;white-space:nowrap">
+        <button class="btn btn-sm btn-in" onclick="openTxModal('${i.id}','in')">입고</button>
+        <button class="btn btn-sm btn-out" onclick="openTxModal('${i.id}','out')">출고</button>
+        <button class="btn btn-sm btn-ghost" onclick="openItemModal('${i.id}')">수정</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function renderHistory() {
+  const typeF = document.getElementById('history-type').value;
+  const rangeF = document.getElementById('history-range').value;
+  const cutoff = rangeF ? Date.now() - Number(rangeF) * 86400000 : 0;
+
+  const rows = state.transactions.filter(t => {
+    if (typeF && t.type !== typeF) return false;
+    if (cutoff && new Date(t.at).getTime() < cutoff) return false;
+    return true;
+  });
+
+  document.getElementById('history-empty').style.display = rows.length ? 'none' : '';
+  document.getElementById('history-body').innerHTML = rows.map(t => txRowHtml(t, true)).join('');
+}
+
+/* ═══════════ 모달 ═══════════ */
+function closeModal() { document.getElementById('modal-root').innerHTML = ''; }
+
+function modalShell(inner) {
+  document.getElementById('modal-root').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal">${inner}</div>
+    </div>`;
+}
+
+function categoryOptions(selected) {
+  return CATEGORIES.map(c => `<option value="${c}" ${c === selected ? 'selected' : ''}>${c}</option>`).join('');
+}
+
+/* 품목 추가/수정 */
+function openItemModal(id) {
+  const item = id ? state.items.find(i => i.id === id) : null;
+  modalShell(`
+    <h3>${item ? '✏️ 품목 수정' : '＋ 품목 추가'}</h3>
+    <form onsubmit="saveItem(event, '${id || ''}')">
+      <div class="form-group">
+        <label>품목명 *</label>
+        <input name="name" required maxlength="40" value="${item ? esc(item.name) : ''}" placeholder="예: 생닭 10호">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>카테고리</label>
+          <select name="category">${categoryOptions(item ? item.category : CATEGORIES[0])}</select>
+        </div>
+        <div class="form-group">
+          <label>단위</label>
+          <input name="unit" maxlength="10" value="${item ? esc(item.unit) : '개'}" placeholder="kg, 개, 통, 장…">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>현재 수량</label>
+          <input name="qty" type="number" min="0" step="any" value="${item ? item.qty : 0}">
+        </div>
+        <div class="form-group">
+          <label>최소 재고 (이하 시 부족 알림)</label>
+          <input name="minQty" type="number" min="0" step="any" value="${item ? item.minQty : 1}">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>유통기한 (없으면 비워두세요)</label>
+        <input name="expiry" type="date" value="${item && item.expiry ? item.expiry : ''}">
+      </div>
+      <div class="form-group">
+        <label>메모</label>
+        <input name="memo" maxlength="60" value="${item ? esc(item.memo || '') : ''}" placeholder="발주처, 보관 방법 등">
+      </div>
+      <div class="modal-actions">
+        ${item ? `<button type="button" class="btn btn-danger-soft" style="margin-right:auto" onclick="deleteItem('${id}')">삭제</button>` : ''}
+        <button type="button" class="btn btn-ghost" onclick="closeModal()">취소</button>
+        <button type="submit" class="btn btn-primary">${item ? '저장' : '추가'}</button>
+      </div>
+    </form>
+  `);
+  document.querySelector('.modal input[name="name"]').focus();
+}
+
+function saveItem(e, id) {
+  e.preventDefault();
+  const f = e.target;
+  const data = {
+    name: f.name.value.trim(),
+    category: f.category.value,
+    unit: f.unit.value.trim() || '개',
+    qty: Math.max(0, Number(f.qty.value) || 0),
+    minQty: Math.max(0, Number(f.minQty.value) || 0),
+    expiry: f.expiry.value || null,
+    memo: f.memo.value.trim(),
+  };
+  if (!data.name) return;
+
+  const dup = state.items.find(i => i.name === data.name && i.id !== id);
+  if (dup) { toast('같은 이름의 품목이 이미 있습니다.'); return; }
+
+  if (id) {
+    const item = state.items.find(i => i.id === id);
+    const oldQty = item.qty;
+    Object.assign(item, data);
+    if (oldQty !== data.qty) {
+      addTx(item, 'adjust', Math.abs(data.qty - oldQty), data.qty, `수량 직접 수정 (${fmtNum(oldQty)} → ${fmtNum(data.qty)})`);
+    }
+    toast('품목이 수정되었습니다.');
+  } else {
+    const item = { id: uid(), ...data };
+    state.items.push(item);
+    if (data.qty > 0) addTx(item, 'in', data.qty, data.qty, '신규 등록');
+    toast('품목이 추가되었습니다.');
+  }
+  save(); closeModal(); renderAll();
+}
+
+function deleteItem(id) {
+  const item = state.items.find(i => i.id === id);
+  if (!item) return;
+  if (!confirm(`「${item.name}」 품목을 삭제할까요?\n(입출고 기록은 유지됩니다)`)) return;
+  state.items = state.items.filter(i => i.id !== id);
+  save(); closeModal(); renderAll();
+  toast('품목이 삭제되었습니다.');
+}
+
+/* 입고/출고 */
+function openTxModal(id, type) {
+  const item = state.items.find(i => i.id === id);
+  if (!item) return;
+  const isIn = type === 'in';
+  modalShell(`
+    <h3>${isIn ? '📥 입고 처리' : '📤 출고 처리'}</h3>
+    <div class="item-info">
+      <b>${esc(item.name)}</b> · 현재 재고 <b>${fmtNum(item.qty)}${esc(item.unit)}</b>
+      ${item.minQty ? ` · 최소 ${fmtNum(item.minQty)}${esc(item.unit)}` : ''}
+    </div>
+    <form onsubmit="saveTx(event, '${id}', '${type}')">
+      <div class="form-group">
+        <label>${isIn ? '입고' : '출고'} 수량 *</label>
+        <input name="qty" type="number" min="0.01" step="any" required autofocus
+          ${!isIn ? `max="${item.qty}"` : ''} placeholder="수량 입력">
+        <div class="quick-qty">
+          ${[1, 5, 10, 20, 50].map(n => `<button type="button" onclick="this.closest('form').qty.value=${n}">${n}</button>`).join('')}
+          ${!isIn ? `<button type="button" onclick="this.closest('form').qty.value=${item.qty}">전량</button>` : ''}
+        </div>
+      </div>
+      ${isIn ? `
+      <div class="form-group">
+        <label>새 유통기한 (선택 — 입력 시 갱신)</label>
+        <input name="expiry" type="date">
+      </div>` : ''}
+      <div class="form-group">
+        <label>메모</label>
+        <input name="memo" maxlength="60" placeholder="${isIn ? '발주처, 단가 등' : '사용처, 폐기 사유 등'}">
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" onclick="closeModal()">취소</button>
+        <button type="submit" class="btn ${isIn ? 'btn-in' : 'btn-out'}" style="font-weight:700">${isIn ? '입고' : '출고'} 완료</button>
+      </div>
+    </form>
+  `);
+  document.querySelector('.modal input[name="qty"]').focus();
+}
+
+function saveTx(e, id, type) {
+  e.preventDefault();
+  const item = state.items.find(i => i.id === id);
+  if (!item) return;
+  const f = e.target;
+  const qty = Number(f.qty.value);
+  if (!(qty > 0)) return;
+
+  if (type === 'out' && qty > item.qty) {
+    toast(`출고 수량이 현재 재고(${fmtNum(item.qty)}${item.unit})를 초과합니다.`);
+    return;
+  }
+
+  item.qty = type === 'in' ? item.qty + qty : item.qty - qty;
+  if (type === 'in' && f.expiry && f.expiry.value) item.expiry = f.expiry.value;
+
+  addTx(item, type, qty, item.qty, f.memo.value.trim());
+  save(); closeModal(); renderAll();
+  toast(`${item.name} ${fmtNum(qty)}${item.unit} ${type === 'in' ? '입고' : '출고'} 완료 (재고 ${fmtNum(item.qty)}${item.unit})`);
+}
+
+function addTx(item, type, qty, qtyAfter, memo) {
+  state.transactions.unshift({
+    id: uid(), itemId: item.id, itemName: item.name, type, qty, qtyAfter,
+    memo: memo || '', at: new Date().toISOString(),
+  });
+  if (state.transactions.length > 2000) state.transactions.length = 2000;
+}
+
+/* ═══════════ 백업/복원 ═══════════ */
+function exportData() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `치킨집재고_백업_${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('백업 파일을 내려받았습니다.');
+}
+
+function importData(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      if (!Array.isArray(data.items) || !Array.isArray(data.transactions)) throw new Error('형식 오류');
+      if (!confirm(`백업에 품목 ${data.items.length}개, 기록 ${data.transactions.length}건이 있습니다.\n현재 데이터를 덮어쓸까요?`)) return;
+      state = data;
+      save(); renderAll();
+      toast('백업을 복원했습니다.');
+    } catch (err) {
+      toast('올바른 백업 파일이 아닙니다.');
+    }
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+/* ═══════════ 기타 ═══════════ */
+let toastTimer;
+function toast(msg) {
+  const wrap = document.getElementById('toast-wrap');
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  wrap.appendChild(el);
+  setTimeout(() => el.remove(), 2600);
+}
+
+function init() {
+  load();
+  const d = new Date();
+  document.getElementById('today-date').textContent =
+    `${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()} (${'일월화수목금토'[d.getDay()]})`;
+  const catSel = document.getElementById('filter-category');
+  catSel.innerHTML = '<option value="">전체 카테고리</option>' + CATEGORIES.map(c => `<option>${c}</option>`).join('');
+  renderAll();
+}
+init();
+</script>
+</body>
+</html>
