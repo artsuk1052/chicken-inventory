@@ -1,2 +1,3 @@
 User-agent: *
 Allow: /
+Sitemap: https://artsuk1052.github.io/chicken-inventory/sitemap.xml
